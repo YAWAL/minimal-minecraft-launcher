@@ -1,5 +1,6 @@
 package model
 
+// VersionManifest represents json from https://launchermeta.mojang.com/mc/game/version_manifest.json
 type VersionManifest struct {
 	Latest   Latest    `json:"latest"`
 	Versions []Version `json:"versions"`
@@ -18,6 +19,7 @@ type Version struct {
 	ReleaseTime string `json:"releaseTime"`
 }
 
+// VersionDetails represents json retrieved from VersionManifest.Versions[i].Version.Url
 type VersionDetails struct {
 	Arguments              map[string]interface{} `json:"arguments"`
 	AssetIndex             AssetIndex             `json:"assetIndex"`
@@ -86,4 +88,14 @@ type File struct {
 	SHA1 string `json:"sha1"`
 	Size int    `json:"size"`
 	URL  string `json:"url"`
+}
+
+// AssetsData retrieved from VersionDetails.AssetIndex.Url
+type AssetsData struct {
+	Objects map[string]interface{} `json:"objects"`
+}
+
+type Asset struct {
+	Hash string
+	Size int
 }

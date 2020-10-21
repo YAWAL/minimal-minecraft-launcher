@@ -12,8 +12,9 @@ import (
 )
 
 const (
-	versionManifestUrl = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
-	minecraftPath      = "" // TODO: user should set this
+	versionManifestUrl    = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
+	minecraftResourcesUrl = "https://resources.download.minecraft.net"
+	minecraftPath         = "" // TODO: user should set this
 )
 
 func main() {
@@ -48,9 +49,16 @@ func main() {
 	}
 
 	for _, item := range versionDetails.Libraries {
-		fmt.Printf("version: %s \n", item.Downloads.Artifact.URL)
-		fmt.Printf("version: %s \n", item.Downloads.Artifact.Path)
+		fmt.Printf("library url: %s \n", item.Downloads.Artifact.URL)
+		fmt.Printf("library path: %s \n", item.Downloads.Artifact.Path)
 	}
+
+	assets := model.AssetsData{}
+	if err := doRequest(versionDetails.AssetIndex.URL, &assets); err != err {
+		fmt.Errorf("get assets: %s", err.Error())
+		return
+	}
+
 	err := downloadLibraries(versionDetails.Libraries)
 	if err != nil {
 		fmt.Print(err.Error())
@@ -98,5 +106,10 @@ func downloadLibraries(libraries []model.Library) error {
 		}
 
 	}
+	return nil
+}
+
+// TODO: not implemented
+func downloadResources(assets model.AssetsData) error {
 	return nil
 }

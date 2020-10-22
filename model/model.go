@@ -48,7 +48,7 @@ type Downloads struct {
 	Client         DownloadItem `json:"client"`
 	ClientMappings DownloadItem `json:"client_mappings"`
 	Server         DownloadItem `json:"server"`
-	ServerMappings DownloadItem `json:"serverMappings"`
+	ServerMappings DownloadItem `json:"server_mappings"`
 }
 
 type DownloadItem struct {
@@ -92,10 +92,10 @@ type File struct {
 
 // AssetsData retrieved from VersionDetails.AssetIndex.Url
 type AssetsData struct {
-	Objects map[string]interface{} `json:"objects"`
+	Objects map[string]Asset `json:"objects"`
 }
 
 type Asset struct {
-	Hash string
-	Size int
+	Hash string `json:"hash"`
+	Size int `json:"size"`
 }

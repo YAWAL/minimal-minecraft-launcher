@@ -3,12 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/YAWAL/mml/model"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
-
-	"github.com/YAWAL/mml/model"
+	"time"
 )
 
 const (
@@ -18,11 +18,11 @@ const (
 )
 
 func main() {
-
+	now := time.Now()
 	versionManifest := model.VersionManifest{}
 
-	if err := doRequest(versionManifestUrl, &versionManifest); err != err {
-		fmt.Errorf("get version manifest: %s", err.Error())
+	if err := doRequest(versionManifestUrl, &versionManifest); err != nil {
+		fmt.Printf("get version manifest: %s", err.Error())
 		return
 	}
 
@@ -43,26 +43,33 @@ func main() {
 
 	versionDetails := model.VersionDetails{}
 
-	if err := doRequest(version.URL, &versionDetails); err != err {
-		fmt.Errorf("get version details: %s", err.Error())
+	if err := doRequest(version.URL, &versionDetails); err != nil {
+		fmt.Printf("get version details: %s", err.Error())
 		return
 	}
 
-	for _, item := range versionDetails.Libraries {
-		fmt.Printf("library url: %s \n", item.Downloads.Artifact.URL)
-		fmt.Printf("library path: %s \n", item.Downloads.Artifact.Path)
+	//for _, item := range versionDetails.Libraries {
+	//	fmt.Printf("library url: %s \n", item.Downloads.Artifact.URL)
+	//	fmt.Printf("library path: %s \n", item.Downloads.Artifact.Path)
+	//}
+
+
+	if err := downloadLibraries(versionDetails.Libraries); err != nil {
+		fmt.Printf("get libraries: %s", err.Error())
+		return
 	}
 
 	assets := model.AssetsData{}
-	if err := doRequest(versionDetails.AssetIndex.URL, &assets); err != err {
-		fmt.Errorf("get assets: %s", err.Error())
+	if err := doRequest(versionDetails.AssetIndex.URL, &assets); err != nil {
+		fmt.Printf("get assets: %s", err.Error())
 		return
 	}
 
-	err := downloadLibraries(versionDetails.Libraries)
-	if err != nil {
-		fmt.Print(err.Error())
+	if err := downloadResources(assets);err != nil {
+		fmt.Printf("get resources: %s", err.Error())
+		return
 	}
+	fmt.Printf("exec time: %f ", time.Since(now).Seconds())
 }
 
 func doRequest(url string, out interface{}) error {
@@ -81,35 +88,44 @@ func doRequest(url string, out interface{}) error {
 
 func downloadLibraries(libraries []model.Library) error {
 	libPath := minecraftPath + "libraries/"
-
 	for _, lib := range libraries {
-		fullPath := libPath + lib.Downloads.Artifact.Path
-		folder := path.Dir(fullPath)
-
-		err := os.MkdirAll(folder, 777)
-		if err != err {
+		err:= download(lib.Downloads.Artifact.URL, libPath + lib.Downloads.Artifact.Path)
+		if err!= nil{
 			return err
 		}
-		resp, err := http.Get(lib.Downloads.Artifact.URL)
-		if err != err {
-			return err
-		}
-		defer resp.Body.Close()
-
-		rawData, err := ioutil.ReadAll(resp.Body)
-		if err != err {
-			return err
-		}
-		err = ioutil.WriteFile(fullPath, rawData, 777)
-		if err != err {
-			return err
-		}
-
 	}
 	return nil
 }
 
-// TODO: not implemented
+
 func downloadResources(assets model.AssetsData) error {
+	resourcePath := minecraftPath + "assets/objects/"
+	for _, val := range assets.Objects {
+		url := minecraftResourcesUrl + "/" + (val.Hash)[0:2] + "/" + val.Hash
+		fullPath := resourcePath + (val.Hash)[0:2] + "/" + val.Hash
+		err:= download(url, fullPath)
+		if err!= nil{
+			return err
+		}
+	}
 	return nil
+}
+
+
+func download(url, fullPath string) error {
+	folder := path.Dir(fullPath)
+	if err := os.MkdirAll(folder, 777); err != err {
+		return err
+	}
+	resp, err := http.Get(url)
+	if err != err {
+		return err
+	}
+	defer resp.Body.Close()
+
+	rawData, err := ioutil.ReadAll(resp.Body)
+	if err != err {
+		return err
+	}
+	return ioutil.WriteFile(fullPath, rawData, 777)
 }

@@ -18,6 +18,7 @@ const (
 )
 
 func main() {
+
 	now := time.Now()
 	versionManifest := model.VersionManifest{}
 
@@ -74,13 +75,13 @@ func main() {
 
 func doRequest(url string, out interface{}) error {
 	resp, err := http.Get(url)
-	if err != err {
+	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	data, err := ioutil.ReadAll(resp.Body)
-	if err != err {
+	if err != nil {
 		return err
 	}
 	return json.Unmarshal(data, &out)
@@ -114,18 +115,33 @@ func downloadResources(assets model.AssetsData) error {
 
 func download(url, fullPath string) error {
 	folder := path.Dir(fullPath)
-	if err := os.MkdirAll(folder, 777); err != err {
+	if err := os.MkdirAll(folder, 777); err != nil {
 		return err
 	}
 	resp, err := http.Get(url)
-	if err != err {
+	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
 	rawData, err := ioutil.ReadAll(resp.Body)
-	if err != err {
+	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(fullPath, rawData, 777)
+
+
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err= file.Write(rawData)
+	if err != nil {
+		return err
+	}
+	//if err := ioutil.WriteFile(path.Base(fullPath), rawData, 0644);err != nil {
+	//	return err
+	//}
+	return nil
 }

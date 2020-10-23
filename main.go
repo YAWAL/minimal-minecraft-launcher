@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 	"time"
 )
 
 const (
 	versionManifestUrl    = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
 	minecraftResourcesUrl = "https://resources.download.minecraft.net"
-	minecraftPath         = "" // TODO: user should set this
+	minecraftPath         = "temp" // TODO: user should set this
 )
 
 func main() {
@@ -54,7 +55,6 @@ func main() {
 	//	fmt.Printf("library path: %s \n", item.Downloads.Artifact.Path)
 	//}
 
-
 	if err := downloadLibraries(versionDetails.Libraries); err != nil {
 		fmt.Printf("get libraries: %s", err.Error())
 		return
@@ -66,7 +66,7 @@ func main() {
 		return
 	}
 
-	if err := downloadResources(assets);err != nil {
+	if err := downloadResources(assets); err != nil {
 		fmt.Printf("get resources: %s", err.Error())
 		return
 	}
@@ -88,36 +88,52 @@ func doRequest(url string, out interface{}) error {
 }
 
 func downloadLibraries(libraries []model.Library) error {
-	libPath := minecraftPath + "libraries/"
+	libPath := minecraftPath + "/libraries/"
 	for _, lib := range libraries {
-		err:= download(lib.Downloads.Artifact.URL, libPath + lib.Downloads.Artifact.Path)
-		if err!= nil{
+		err := download(lib.Downloads.Artifact.URL, libPath+lib.Downloads.Artifact.Path)
+		if err != nil {
 			return err
+		}
+		classifiers := lib.Downloads.Classifiers
+		if classifiers != nil {
+			switch runtime.GOOS {
+			case "linux":
+				err = download(classifiers.NativesLinux.URL, libPath+classifiers.NativesLinux.Path)
+			case "windows":
+				err = download(classifiers.NativesWindows.URL, libPath+classifiers.NativesWindows.Path)
+			case "darwin":
+				err = download(classifiers.NativesMacos.URL, libPath+classifiers.NativesMacos.Path)
+			}
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
 }
 
-
 func downloadResources(assets model.AssetsData) error {
-	resourcePath := minecraftPath + "assets/objects/"
+	resourcePath := minecraftPath + "/assets/objects/"
 	for _, val := range assets.Objects {
 		url := minecraftResourcesUrl + "/" + (val.Hash)[0:2] + "/" + val.Hash
 		fullPath := resourcePath + (val.Hash)[0:2] + "/" + val.Hash
-		err:= download(url, fullPath)
-		if err!= nil{
+		err := download(url, fullPath)
+		if err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-
 func download(url, fullPath string) error {
+	if url == "" {
+		return nil
+	}
 	folder := path.Dir(fullPath)
-	if err := os.MkdirAll(folder, 777); err != nil {
+	if err := os.MkdirAll(folder, 0700); err != nil {
 		return err
 	}
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return err
@@ -129,19 +145,16 @@ func download(url, fullPath string) error {
 		return err
 	}
 
-
 	file, err := os.Create(fullPath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	_, err= file.Write(rawData)
+	_, err = file.Write(rawData)
 	if err != nil {
 		return err
 	}
-	//if err := ioutil.WriteFile(path.Base(fullPath), rawData, 0644);err != nil {
-	//	return err
-	//}
+
 	return nil
 }

@@ -63,7 +63,14 @@ type Library struct {
 }
 
 type LibDownloads struct {
-	Artifact Artifact `json:"artifact"`
+	Artifact    Artifact     `json:"artifact"`
+	Classifiers *Classifiers `json:"classifiers"`
+}
+
+type Classifiers struct {
+	NativesLinux   Artifact `json:"natives-linux,omitempty"`
+	NativesMacos   Artifact `json:"natives-macos,omitempty"`
+	NativesWindows Artifact `json:"natives-windows,omitempty"`
 }
 
 type Artifact struct {
@@ -97,5 +104,5 @@ type AssetsData struct {
 
 type Asset struct {
 	Hash string `json:"hash"`
-	Size int `json:"size"`
+	Size int    `json:"size"`
 }

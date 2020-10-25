@@ -125,12 +125,9 @@ func downloadResources(assets *model.AssetsData) error {
 	return nil
 }
 
-func downloadClient(client *DownloadItem) error {
+func downloadClient(client *model.DownloadItem) error {
 	clientPath := minecraftPath + "/path/" // TODO: change path to correct location
-	if err := download(client.URL, clientPath); err != nil {
-		return err
-	}
-	return nil
+	return download(client.URL, clientPath)
 }
 
 func download(url, fullPath string) error {

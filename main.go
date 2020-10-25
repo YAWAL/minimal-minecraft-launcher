@@ -2,14 +2,18 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/YAWAL/mml/model"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
+	"path/filepath"
 	"runtime"
 	"time"
+
+	"github.com/YAWAL/mml/model"
 )
 
 const (
@@ -19,7 +23,6 @@ const (
 )
 
 func main() {
-
 	now := time.Now()
 	versionManifest := model.VersionManifest{}
 
@@ -70,6 +73,10 @@ func main() {
 		return
 	}
 
+	if err := createExecutableFile(&versionDetails); err != nil {
+		fmt.Printf("create executable file: %s", err.Error())
+		return
+	}
 	fmt.Printf("exec time: %f ", time.Since(now).Seconds())
 }
 
@@ -103,6 +110,8 @@ func downloadLibraries(libraries []model.Library) error {
 				err = download(classifiers.NativesWindows.URL, libPath+classifiers.NativesWindows.Path)
 			case "darwin":
 				err = download(classifiers.NativesMacos.URL, libPath+classifiers.NativesMacos.Path)
+			default:
+				err = errors.New("unsupported OS")
 			}
 			if err != nil {
 				return err
@@ -110,6 +119,25 @@ func downloadLibraries(libraries []model.Library) error {
 		}
 	}
 	return nil
+}
+
+func createClassPath(details *model.VersionDetails) (string, error) {
+	var separator, classPath string
+	var err error
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		separator = ":"
+	case "windows":
+		separator = ";"
+	default:
+		return "", errors.New("unsupported OS")
+	}
+	libPath := minecraftPath + "/libraries/"
+	for _, lib := range details.Libraries {
+		classPath += filepath.Clean(libPath+lib.Downloads.Artifact.Path) + separator
+	}
+	classPath += filepath.Clean(clientPath(details))
+	return classPath, err
 }
 
 func downloadResources(assets *model.AssetsData) error {
@@ -126,8 +154,7 @@ func downloadResources(assets *model.AssetsData) error {
 }
 
 func downloadClient(versionDetails *model.VersionDetails) error {
-	clientPath := minecraftPath + "/versions/" + versionDetails.ID + "/" + versionDetails.ID + ".jar"
-	return download(versionDetails.Downloads.Client.URL, clientPath)
+	return download(versionDetails.Downloads.Client.URL, clientPath(versionDetails))
 }
 
 func download(url, fullPath string) error {
@@ -163,4 +190,50 @@ func download(url, fullPath string) error {
 	}
 
 	return nil
+}
+
+func runMinecraft(args string) error {
+	return exec.Command("java", args).Run()
+}
+
+func createExecutableFile(versionDetails *model.VersionDetails) error {
+	classPath, err := createClassPath(versionDetails)
+	if err != nil {
+		return err
+	}
+	var fileName, prefix string
+	switch runtime.GOOS {
+	case "linux", "darwin":
+		fileName = "start.sh"
+		prefix = "#! /bin/sh \n"
+	case "windows":
+		fileName = "start.bat"
+	default:
+		return errors.New("can't create executable file: unsupported OS")
+	}
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+
+	_, err = file.Write([]byte(
+		prefix +
+			"java " +
+			"-cp " +
+			classPath +
+			" " +
+			versionDetails.MainClass +
+			" " +
+			"--accessToken " +
+			"youracctoken" +
+			" " +
+			"--version " +
+			versionDetails.ID))
+
+	defer file.Close()
+	return err
+}
+
+func clientPath(versionDetails *model.VersionDetails) string {
+	return minecraftPath + "/versions/" + versionDetails.ID + "/" + versionDetails.ID + ".jar"
 }

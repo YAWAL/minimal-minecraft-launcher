@@ -44,19 +44,18 @@ func main() {
 	}
 
 	versionDetails := model.VersionDetails{}
-
 	if err := doRequest(version.URL, &versionDetails); err != nil {
 		fmt.Printf("get version details: %s", err.Error())
 		return
 	}
 
-	//for _, item := range versionDetails.Libraries {
-	//	fmt.Printf("library url: %s \n", item.Downloads.Artifact.URL)
-	//	fmt.Printf("library path: %s \n", item.Downloads.Artifact.Path)
-	//}
-
 	if err := downloadLibraries(versionDetails.Libraries); err != nil {
 		fmt.Printf("get libraries: %s", err.Error())
+		return
+	}
+
+	if err := downloadClient(&versionDetails.Downloads.Client); err != nil {
+		fmt.Printf("get client: %s", err.Error())
 		return
 	}
 
@@ -66,10 +65,11 @@ func main() {
 		return
 	}
 
-	if err := downloadResources(assets); err != nil {
+	if err := downloadResources(&assets); err != nil {
 		fmt.Printf("get resources: %s", err.Error())
 		return
 	}
+
 	fmt.Printf("exec time: %f ", time.Since(now).Seconds())
 }
 
@@ -112,7 +112,7 @@ func downloadLibraries(libraries []model.Library) error {
 	return nil
 }
 
-func downloadResources(assets model.AssetsData) error {
+func downloadResources(assets *model.AssetsData) error {
 	resourcePath := minecraftPath + "/assets/objects/"
 	for _, val := range assets.Objects {
 		url := minecraftResourcesUrl + "/" + (val.Hash)[0:2] + "/" + val.Hash
@@ -121,6 +121,14 @@ func downloadResources(assets model.AssetsData) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func downloadClient(client *DownloadItem) error {
+	clientPath := minecraftPath + "/path/" // TODO: change path to correct location
+	if err := download(client.URL, clientPath); err != nil {
+		return err
 	}
 	return nil
 }

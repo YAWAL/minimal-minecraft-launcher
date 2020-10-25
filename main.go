@@ -54,7 +54,7 @@ func main() {
 		return
 	}
 
-	if err := downloadClient(&versionDetails.Downloads.Client); err != nil {
+	if err := downloadClient(&versionDetails); err != nil {
 		fmt.Printf("get client: %s", err.Error())
 		return
 	}
@@ -125,13 +125,14 @@ func downloadResources(assets *model.AssetsData) error {
 	return nil
 }
 
-func downloadClient(client *model.DownloadItem) error {
-	clientPath := minecraftPath + "/path/" // TODO: change path to correct location
-	return download(client.URL, clientPath)
+func downloadClient(versionDetails *model.VersionDetails) error {
+	clientPath := minecraftPath + "/versions/" + versionDetails.ID + "/" + versionDetails.ID + ".jar"
+	return download(versionDetails.Downloads.Client.URL, clientPath)
 }
 
 func download(url, fullPath string) error {
-	if url == "" {
+	_, err := os.Stat(fullPath)
+	if url == "" || err == nil {
 		return nil
 	}
 	folder := path.Dir(fullPath)

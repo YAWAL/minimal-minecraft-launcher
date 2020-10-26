@@ -111,7 +111,7 @@ func downloadLibraries(libraries []model.Library) error {
 			case "darwin":
 				err = download(classifiers.NativesMacos.URL, libPath+classifiers.NativesMacos.Path)
 			default:
-				err = errors.New("unsupported OS")
+                err = errors.New("download libraries: unsupported OS")
 			}
 			if err != nil {
 				return err
@@ -130,11 +130,24 @@ func createClassPath(details *model.VersionDetails) (string, error) {
 	case "windows":
 		separator = ";"
 	default:
-		return "", errors.New("unsupported OS")
+        return "", errors.New("choosing separator: unsupported OS")
 	}
 	libPath := minecraftPath + "/libraries/"
 	for _, lib := range details.Libraries {
 		classPath += filepath.Clean(libPath+lib.Downloads.Artifact.Path) + separator
+        classifiers := lib.Downloads.Classifiers
+        if classifiers != nil {
+            switch runtime.GOOS {
+            case "linux":
+                classPath += filepath.Clean(libPath+classifiers.NativesLinux.Path) + separator
+            case "windows":
+                classPath += filepath.Clean(libPath+classifiers.NativesWindows.Path) + separator
+            case "darwin":
+                classPath += filepath.Clean(libPath+classifiers.NativesMacos.Path) + separator
+            default:
+                return "", errors.New("creating classPath: unsupported OS")
+            }
+        }
 	}
 	classPath += filepath.Clean(clientPath(details))
 	return classPath, err

@@ -19,8 +19,19 @@ import (
 const (
 	versionManifestUrl    = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
 	minecraftResourcesUrl = "https://resources.download.minecraft.net"
-	minecraftPath         = "temp" // TODO: user should set this
+	minecraftPath         = "temp"         // TODO: user should set this
+	username              = "playername"   // TODO: user should set this
+	minecraftVersion      = "1.16.2"       // TODO: user should set this
+	accessToken           = "youracctoken" // TODO: user should set this
 )
+
+func assetsPath() string {
+	return minecraftPath + "/assets/"
+}
+
+func clientPath(versionDetails *model.VersionDetails) string {
+	return minecraftPath + "/versions/" + versionDetails.ID + "/" + versionDetails.ID + ".jar"
+}
 
 func main() {
 	now := time.Now()
@@ -35,13 +46,10 @@ func main() {
 	//	fmt.Printf("version: %s \n", item.ID)
 	//}
 
-	// TODO: refactor this
-	vrs := "1.16.2"
-
 	var version model.Version
 
 	for _, item := range versionManifest.Versions {
-		if item.ID == vrs {
+		if item.ID == minecraftVersion {
 			version = item
 		}
 	}
@@ -65,6 +73,11 @@ func main() {
 	assets := model.AssetsData{}
 	if err := doRequest(versionDetails.AssetIndex.URL, &assets); err != nil {
 		fmt.Printf("get assets: %s", err.Error())
+		return
+	}
+
+	if err := downloadIndexJson(&versionDetails.AssetIndex); err != nil {
+		fmt.Printf("get assets index json: %s", err.Error())
 		return
 	}
 
@@ -111,7 +124,7 @@ func downloadLibraries(libraries []model.Library) error {
 			case "darwin":
 				err = download(classifiers.NativesMacos.URL, libPath+classifiers.NativesMacos.Path)
 			default:
-                err = errors.New("download libraries: unsupported OS")
+				err = errors.New("download libraries: unsupported OS")
 			}
 			if err != nil {
 				return err
@@ -130,40 +143,46 @@ func createClassPath(details *model.VersionDetails) (string, error) {
 	case "windows":
 		separator = ";"
 	default:
-        return "", errors.New("choosing separator: unsupported OS")
+		return "", errors.New("choosing separator: unsupported OS")
 	}
 	libPath := minecraftPath + "/libraries/"
 	for _, lib := range details.Libraries {
 		classPath += filepath.Clean(libPath+lib.Downloads.Artifact.Path) + separator
-        classifiers := lib.Downloads.Classifiers
-        if classifiers != nil {
-            switch runtime.GOOS {
-            case "linux":
-                classPath += filepath.Clean(libPath+classifiers.NativesLinux.Path) + separator
-            case "windows":
-                classPath += filepath.Clean(libPath+classifiers.NativesWindows.Path) + separator
-            case "darwin":
-                classPath += filepath.Clean(libPath+classifiers.NativesMacos.Path) + separator
-            default:
-                return "", errors.New("creating classPath: unsupported OS")
-            }
-        }
+		classifiers := lib.Downloads.Classifiers
+		if classifiers != nil {
+			switch runtime.GOOS {
+			case "linux":
+				classPath += filepath.Clean(libPath+classifiers.NativesLinux.Path) + separator
+			case "windows":
+				classPath += filepath.Clean(libPath+classifiers.NativesWindows.Path) + separator
+			case "darwin":
+				classPath += filepath.Clean(libPath+classifiers.NativesMacos.Path) + separator
+			default:
+				return "", errors.New("creating classPath: unsupported OS")
+			}
+		}
 	}
 	classPath += filepath.Clean(clientPath(details))
 	return classPath, err
 }
 
 func downloadResources(assets *model.AssetsData) error {
-	resourcePath := minecraftPath + "/assets/objects/"
+	objectsPath := assetsPath() + "objects/"
+
 	for _, val := range assets.Objects {
 		url := minecraftResourcesUrl + "/" + (val.Hash)[0:2] + "/" + val.Hash
-		fullPath := resourcePath + (val.Hash)[0:2] + "/" + val.Hash
+		fullPath := objectsPath + (val.Hash)[0:2] + "/" + val.Hash
 		err := download(url, fullPath)
 		if err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func downloadIndexJson(assetIndex *model.AssetIndex) error {
+	indexesPath := assetsPath() + "indexes/"
+	return download(assetIndex.URL, indexesPath+assetIndex.ID+".json")
 }
 
 func downloadClient(versionDetails *model.VersionDetails) error {
@@ -229,24 +248,16 @@ func createExecutableFile(versionDetails *model.VersionDetails) error {
 		return err
 	}
 
-	_, err = file.Write([]byte(
-		prefix +
-			"java " +
-			"-cp " +
-			classPath +
-			" " +
-			versionDetails.MainClass +
-			" " +
-			"--accessToken " +
-			"youracctoken" +
-			" " +
-			"--version " +
-			versionDetails.ID))
+	_, err = file.Write([]byte(prefix +
+		"java " +
+		"-cp " + classPath + " " + versionDetails.MainClass + " " +
+		"--username " + username + " " +
+		"--gameDir " + minecraftPath + " " +
+		"--assetIndex " + versionDetails.AssetIndex.ID + " " +
+		"--assetsDir " + minecraftPath + "/assets/" + " " +
+		"--accessToken " + accessToken + " " +
+		"--version " + versionDetails.ID))
 
 	defer file.Close()
 	return err
-}
-
-func clientPath(versionDetails *model.VersionDetails) string {
-	return minecraftPath + "/versions/" + versionDetails.ID + "/" + versionDetails.ID + ".jar"
 }

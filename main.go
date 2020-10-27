@@ -42,16 +42,10 @@ func main() {
 		return
 	}
 
-	//for _, item := range versionManifest.Versions {
-	//	fmt.Printf("version: %s \n", item.ID)
-	//}
-
-	var version model.Version
-
-	for _, item := range versionManifest.Versions {
-		if item.ID == minecraftVersion {
-			version = item
-		}
+	version, err := getVersion(versionManifest.Versions)
+	if err != nil {
+		fmt.Printf("get version: %s", err)
+		return
 	}
 
 	versionDetails := model.VersionDetails{}
@@ -91,6 +85,15 @@ func main() {
 		return
 	}
 	fmt.Printf("exec time: %f ", time.Since(now).Seconds())
+}
+
+func getVersion(versions []model.Version) (model.Version, error) {
+	for _, item := range versions {
+		if item.ID == minecraftVersion {
+			return item, nil
+		}
+	}
+	return model.Version{}, fmt.Errorf("can't find version %s", minecraftVersion)
 }
 
 func doRequest(url string, out interface{}) error {
@@ -254,7 +257,7 @@ func createExecutableFile(versionDetails *model.VersionDetails) error {
 		"--username " + username + " " +
 		"--gameDir " + minecraftPath + " " +
 		"--assetIndex " + versionDetails.AssetIndex.ID + " " +
-		"--assetsDir " + minecraftPath + "/assets/" + " " +
+		"--assetsDir " + assetsPath() + " " +
 		"--accessToken " + accessToken + " " +
 		"--version " + versionDetails.ID))
 

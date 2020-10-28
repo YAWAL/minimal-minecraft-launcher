@@ -19,8 +19,10 @@ const (
 	minecraftResourcesUrl = "https://resources.download.minecraft.net"
 	minecraftPath         = "temp"         // TODO: user should set this
 	username              = "playername"   // TODO: user should set this
-	minecraftVersion      = "1.16.1"       // TODO: user should set this
+	minecraftVersion      = "1.16.2"       // TODO: user should set this
 	accessToken           = "youracctoken" // TODO: user should set this
+	initialHeapSize       = "512"          // TODO: user should set this
+	maxHeapSize           = "2048"         // TODO: user should set this
 )
 
 func assetsPath() string {
@@ -251,6 +253,9 @@ func createExecutableFile(versionDetails *VersionDetails) error {
 
 	_, err = file.Write([]byte(prefix +
 		"java " +
+		//"-Djava.library.path=" + filepath.Clean(minecraftPath+"/versions/"+versionDetails.ID+"/natives") + " " +
+		"-Xms" + initialHeapSize + "m " +
+		"-Xmx" + maxHeapSize + "m " +
 		"-cp " + classPath + " " + versionDetails.MainClass + " " +
 		"--username " + username + " " +
 		"--gameDir " + minecraftPath + " " +

@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
-
-	"github.com/YAWAL/mml/model"
 )
 
 const (
@@ -21,7 +19,7 @@ const (
 	minecraftResourcesUrl = "https://resources.download.minecraft.net"
 	minecraftPath         = "temp"         // TODO: user should set this
 	username              = "playername"   // TODO: user should set this
-	minecraftVersion      = "1.16.2"       // TODO: user should set this
+	minecraftVersion      = "1.16.1"       // TODO: user should set this
 	accessToken           = "youracctoken" // TODO: user should set this
 )
 
@@ -29,13 +27,13 @@ func assetsPath() string {
 	return minecraftPath + "/assets/"
 }
 
-func clientPath(versionDetails *model.VersionDetails) string {
+func clientPath(versionDetails *VersionDetails) string {
 	return minecraftPath + "/versions/" + versionDetails.ID + "/" + versionDetails.ID + ".jar"
 }
 
 func main() {
 	now := time.Now()
-	versionManifest := model.VersionManifest{}
+	versionManifest := VersionManifest{}
 
 	if err := doRequest(versionManifestUrl, &versionManifest); err != nil {
 		fmt.Printf("get version manifest: %s", err.Error())
@@ -48,7 +46,7 @@ func main() {
 		return
 	}
 
-	versionDetails := model.VersionDetails{}
+	versionDetails := VersionDetails{}
 	if err := doRequest(version.URL, &versionDetails); err != nil {
 		fmt.Printf("get version details: %s", err.Error())
 		return
@@ -64,7 +62,7 @@ func main() {
 		return
 	}
 
-	assets := model.AssetsData{}
+	assets := AssetsData{}
 	if err := doRequest(versionDetails.AssetIndex.URL, &assets); err != nil {
 		fmt.Printf("get assets: %s", err.Error())
 		return
@@ -87,13 +85,13 @@ func main() {
 	fmt.Printf("exec time: %f ", time.Since(now).Seconds())
 }
 
-func getVersion(versions []model.Version) (model.Version, error) {
+func getVersion(versions []Version) (Version, error) {
 	for _, item := range versions {
 		if item.ID == minecraftVersion {
 			return item, nil
 		}
 	}
-	return model.Version{}, fmt.Errorf("can't find version %s", minecraftVersion)
+	return Version{}, fmt.Errorf("can't find version %s", minecraftVersion)
 }
 
 func doRequest(url string, out interface{}) error {
@@ -110,7 +108,7 @@ func doRequest(url string, out interface{}) error {
 	return json.Unmarshal(data, &out)
 }
 
-func downloadLibraries(libraries []model.Library) error {
+func downloadLibraries(libraries []Library) error {
 	libPath := minecraftPath + "/libraries/"
 	for _, lib := range libraries {
 		err := download(lib.Downloads.Artifact.URL, libPath+lib.Downloads.Artifact.Path)
@@ -137,7 +135,7 @@ func downloadLibraries(libraries []model.Library) error {
 	return nil
 }
 
-func createClassPath(details *model.VersionDetails) (string, error) {
+func createClassPath(details *VersionDetails) (string, error) {
 	var separator, classPath string
 	var err error
 	switch runtime.GOOS {
@@ -169,7 +167,7 @@ func createClassPath(details *model.VersionDetails) (string, error) {
 	return classPath, err
 }
 
-func downloadResources(assets *model.AssetsData) error {
+func downloadResources(assets *AssetsData) error {
 	objectsPath := assetsPath() + "objects/"
 
 	for _, val := range assets.Objects {
@@ -183,12 +181,12 @@ func downloadResources(assets *model.AssetsData) error {
 	return nil
 }
 
-func downloadIndexJson(assetIndex *model.AssetIndex) error {
+func downloadIndexJson(assetIndex *AssetIndex) error {
 	indexesPath := assetsPath() + "indexes/"
 	return download(assetIndex.URL, indexesPath+assetIndex.ID+".json")
 }
 
-func downloadClient(versionDetails *model.VersionDetails) error {
+func downloadClient(versionDetails *VersionDetails) error {
 	return download(versionDetails.Downloads.Client.URL, clientPath(versionDetails))
 }
 
@@ -231,7 +229,7 @@ func runMinecraft(args string) error {
 	return exec.Command("java", args).Run()
 }
 
-func createExecutableFile(versionDetails *model.VersionDetails) error {
+func createExecutableFile(versionDetails *VersionDetails) error {
 	classPath, err := createClassPath(versionDetails)
 	if err != nil {
 		return err

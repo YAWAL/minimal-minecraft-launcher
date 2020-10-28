@@ -1,4 +1,4 @@
-package model
+package main
 
 // VersionManifest represents json from https://launchermeta.mojang.com/mc/game/version_manifest.json
 type VersionManifest struct {

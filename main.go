@@ -12,18 +12,15 @@ import (
 	"path/filepath"
 	"runtime"
 	"time"
+    "flag"
 )
 
 const (
 	versionManifestUrl    = "https://launchermeta.mojang.com/mc/game/version_manifest.json"
 	minecraftResourcesUrl = "https://resources.download.minecraft.net"
-	minecraftPath         = "temp"         // TODO: user should set this
-	username              = "playername"   // TODO: user should set this
-	minecraftVersion      = "1.16.2"       // TODO: user should set this
-	accessToken           = "youracctoken" // TODO: user should set this
-	initialHeapSize       = "512"          // TODO: user should set this
-	maxHeapSize           = "2048"         // TODO: user should set this
 )
+
+var minecraftPath, username, minecraftVersion, accessToken, initialHeapSize, maxHeapSize string
 
 func assetsPath() string {
 	return minecraftPath + "/assets/"
@@ -35,6 +32,11 @@ func clientPath(versionDetails *VersionDetails) string {
 
 func main() {
 	now := time.Now()
+
+    if !getUserConfiguration() {
+        return
+    }
+
 	versionManifest := VersionManifest{}
 
 	if err := doRequest(versionManifestUrl, &versionManifest); err != nil {
@@ -85,6 +87,21 @@ func main() {
 		return
 	}
 	fmt.Printf("exec time: %f ", time.Since(now).Seconds())
+}
+
+func getUserConfiguration() bool {
+    flag.StringVar(&minecraftPath, "path", "temp", "Path to folder, where the game should be installed.")
+    flag.StringVar(&username, "username", "playername", "Your username.")
+    flag.StringVar(&minecraftVersion, "version", "1.16.1", "Select version of minecraft.") // TODO: change this to latest version
+    flag.StringVar(&accessToken, "token", "youracctoken", "Your access token from Mojang, if you have this.")
+    flag.StringVar(&initialHeapSize, "init_memory", "512", "Memory (in megabytes) for java machine at start.")
+    flag.StringVar(&maxHeapSize, "max_memory", "2048", "Maximum allowed memory (in megabytes) for java machine.")
+    flag.Parse()
+    if len(os.Args) < 2 {
+        flag.PrintDefaults()
+        return false
+    }
+    return true
 }
 
 func getVersion(versions []Version) (Version, error) {
@@ -239,13 +256,15 @@ func createExecutableFile(versionDetails *VersionDetails) error {
 	var fileName, prefix string
 	switch runtime.GOOS {
 	case "linux", "darwin":
-		fileName = "start.sh"
+        fileName = "start.sh"
 		prefix = "#! /bin/sh \n"
 	case "windows":
 		fileName = "start.bat"
 	default:
 		return errors.New("can't create executable file: unsupported OS")
 	}
+    // TODO: maybe put this to minecraft folder, but then we need to change path for classpath, 
+    // to save ability launch from relative path
 	file, err := os.Create(fileName)
 	if err != nil {
 		return err
